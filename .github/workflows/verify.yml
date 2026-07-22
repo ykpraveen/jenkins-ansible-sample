@@ -15,6 +15,9 @@ jobs:
           docker --version
           docker compose version
 
+      - name: Lint the app Dockerfile with hadolint
+        run: docker run --rm -i hadolint/hadolint < app/Dockerfile
+
       - name: Generate SSH keypair for the fleet
         run: ./scripts/setup.sh
 
@@ -41,6 +44,33 @@ jobs:
       - name: Traefik dashboard is reachable
         run: curl -sf http://localhost:8082/api/rawdata
 
+      - name: Unit-test the app (gates the image build itself)
+        run: docker build --target test ./app
+
+      - name: Build the production app image
+        run: docker build --build-arg APP_VERSION=ci --build-arg GIT_SHA=${{ github.sha }} -t localhost:5000/sample-app:ci ./app
+
+      - name: Push and pull the app image through the local registry
+        run: |
+          docker push localhost:5000/sample-app:ci
+          docker rmi localhost:5000/sample-app:ci
+          docker pull localhost:5000/sample-app:ci
+
+      - name: App container serves /health and /version
+        run: |
+          docker run -d --rm --name app-smoke -p 18080:8080 localhost:5000/sample-app:ci
+          sleep 2
+          curl -sf http://localhost:18080/health
+          curl -sf http://localhost:18080/version | grep -q '"git_sha"'
+          docker stop app-smoke
+
+      - name: App container fails health check when SIMULATE_FAILURE is set
+        run: |
+          docker run -d --rm --name app-smoke-broken -e SIMULATE_FAILURE=true -p 18081:8080 localhost:5000/sample-app:ci
+          sleep 2
+          ! curl -sf http://localhost:18081/health
+          docker stop app-smoke-broken
+
       - name: Show logs on failure
         if: failure()
         run: docker compose logs
@@ -49,7 +79,6 @@ jobs:
         if: always()
         run: docker compose down -v
 
-      # Phase 2: docker build --target test the Flask app
       # Phase 3: run ansible-control playbooks against the compose fleet
       # Phase 4: validate Jenkins JCasC config parses
       # Phase 6: deploy a broken image tag, assert rollback restores the previous version
