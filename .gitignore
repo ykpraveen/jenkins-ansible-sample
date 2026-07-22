@@ -1,0 +1,32 @@
+# Secrets — never commit real keys/vault passwords (including .pub — generated fresh per clone)
+secrets/*
+!secrets/.gitkeep
+*.pem
+*.key
+.vault_pass
+*.vault_pass
+
+# Ansible
+*.retry
+ansible/inventories/**/host_vars/vault.yml.dec
+
+# Python (app tests run inside Docker, but editors may still create these locally)
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Docker / Compose
+.env
+docker-compose.override.yml
+
+# Molecule
+.molecule/
+ansible/roles/*/molecule/*/.cache/
+
+# Editor / OS cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp

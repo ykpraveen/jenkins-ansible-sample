@@ -1,0 +1,55 @@
+name: Verify stack
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker & Compose versions
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Generate SSH keypair for the fleet
+        run: ./scripts/setup.sh
+
+      - name: Validate compose config
+        run: docker compose config
+
+      - name: Bring up the fleet, registry, and Traefik
+        run: docker compose up -d --build
+
+      - name: Wait for containers to report running
+        run: |
+          sleep 5
+          docker compose ps
+
+      - name: SSH into a fleet host as the ansible user
+        run: |
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              -i secrets/ssh/id_ed25519 -p 2201 ansible@localhost \
+              'hostname && whoami'
+
+      - name: Registry is reachable
+        run: curl -sf http://localhost:5000/v2/
+
+      - name: Traefik dashboard is reachable
+        run: curl -sf http://localhost:8082/api/rawdata
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+      # Phase 2: docker build --target test the Flask app
+      # Phase 3: run ansible-control playbooks against the compose fleet
+      # Phase 4: validate Jenkins JCasC config parses
+      # Phase 6: deploy a broken image tag, assert rollback restores the previous version
