@@ -1,0 +1,13 @@
+ansible_user: ansible
+ansible_ssh_private_key_file: /secrets/id_ed25519
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+ansible_python_interpreter: /usr/bin/python3
+
+registry_host: registry
+registry_port: 5000
+registry: "{{ registry_host }}:{{ registry_port }}"
+
+app_name: sample-app
+app_port: 8080
+
+app_secret_key: "{{ vault_app_secret_key }}"

@@ -1,0 +1,33 @@
+---
+- name: Update apt package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - iproute2
+    state: present
+
+- name: Set /etc/timezone to UTC
+  ansible.builtin.copy:
+    content: "UTC\n"
+    dest: /etc/timezone
+    mode: "0644"
+
+- name: Link /etc/localtime to UTC
+  ansible.builtin.file:
+    src: /usr/share/zoneinfo/UTC
+    dest: /etc/localtime
+    state: link
+    force: true
+
+- name: Drop an Ansible-managed MOTD banner
+  ansible.builtin.template:
+    src: motd.j2
+    dest: /etc/motd
+    mode: "0644"

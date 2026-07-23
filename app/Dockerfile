@@ -1,11 +1,13 @@
 FROM python:3.12-slim AS base
+COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /usr/local/bin/
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_PROJECT_ENVIRONMENT=/usr/local
+COPY pyproject.toml uv.lock .
+RUN uv sync --frozen --no-dev --no-install-project
 
 FROM base AS test
-COPY requirements-test.txt .
-RUN pip install --no-cache-dir -r requirements-test.txt
+RUN uv sync --frozen --group test --no-install-project
 COPY app.py .
 COPY tests/ tests/
 RUN python -m pytest -q

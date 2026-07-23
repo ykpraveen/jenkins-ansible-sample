@@ -1,0 +1,59 @@
+---
+# Runs with --network host: the app binds directly to this host's own network
+# namespace (rather than the nested dockerd's internal bridge), which is what lets
+# the outer Traefik container — routing by Docker labels on fleet-prod1/prod2 —
+# reach it on port {{ app_port }} at all.
+
+- name: Record the currently running image tag (last-known-good, for Phase 6's rollback)
+  ansible.builtin.shell: |
+    docker inspect --format {% raw %}'{{.Config.Image}}'{% endraw %} {{ app_name }} 2>/dev/null || true
+  args:
+    executable: /bin/bash
+  register: previous_image
+  changed_when: false
+
+- name: Persist the last-known-good image tag
+  ansible.builtin.copy:
+    content: "{{ previous_image.stdout }}\n"
+    dest: /opt/app_deploy_last_known_good
+    mode: "0644"
+  when: previous_image.stdout | length > 0
+
+- name: Pull the target application image
+  ansible.builtin.command: "docker pull {{ registry }}/{{ app_name }}:{{ app_image_tag }}"
+  changed_when: true
+
+- name: Remove any existing app container
+  ansible.builtin.command: "docker rm -f {{ app_name }}"
+  register: remove_result
+  changed_when: remove_result.rc == 0
+  failed_when: false
+
+- name: Run the new application container
+  ansible.builtin.command: >
+    docker run -d
+    --name {{ app_name }}
+    --network host
+    --restart unless-stopped
+    -e SIMULATE_FAILURE={{ simulate_failure }}
+    -e APP_SECRET_KEY={{ app_secret_key }}
+    {{ registry }}/{{ app_name }}:{{ app_image_tag }}
+  changed_when: true
+
+- name: Wait for the new container to pass its post-deploy health check
+  ansible.builtin.uri:
+    url: "http://localhost:{{ app_port }}/health"
+    status_code: 200
+  register: health_result
+  until: health_result.status | default(0) == 200
+  retries: "{{ health_check_retries }}"
+  delay: "{{ health_check_delay }}"
+  failed_when: false
+
+- name: Fail the play if the post-deploy health check never passed
+  ansible.builtin.fail:
+    msg: >-
+      {{ app_name }} on {{ inventory_hostname }} failed its post-deploy health check
+      after {{ health_check_retries }} attempts at {{ health_check_delay }}s intervals.
+      Deployment stopped before touching the rest of the batch.
+  when: health_result.status | default(0) != 200

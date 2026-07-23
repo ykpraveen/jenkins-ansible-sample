@@ -8,7 +8,7 @@ secrets/*
 
 # Ansible
 *.retry
-ansible/inventories/**/host_vars/vault.yml.dec
+ansible/**/vault.yml.dec
 
 # Python (app tests run inside Docker, but editors may still create these locally)
 __pycache__/
