@@ -98,6 +98,7 @@ services:
       - fleet_net
     environment:
       - ANSIBLE_VAULT_PASSWORD
+      - HOME=/tmp
     volumes:
       - ./ansible:/ansible
       - ./secrets/ssh/id_ed25519:/secrets/id_ed25519:ro
