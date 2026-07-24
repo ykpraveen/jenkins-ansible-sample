@@ -1,4 +1,11 @@
 ---
+dependency:
+  name: galaxy
+  options:
+    # See the "Corporate network / TLS-inspecting proxy note" in README.md — this
+    # mirrors the same escape hatch used for the docker_engine role's apt/GPG fetches.
+    ignore-certs: ${MOLECULE_GALAXY_IGNORE_CERTS:-false}
+
 driver:
   name: docker
 
