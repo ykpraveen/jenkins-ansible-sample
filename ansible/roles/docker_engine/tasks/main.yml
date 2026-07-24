@@ -26,6 +26,15 @@
     filename: docker
     state: present
 
+- name: Relax TLS verification for Docker's apt repo (corporate proxy workaround, see README)
+  ansible.builtin.copy:
+    content: |
+      Acquire::https::download.docker.com::Verify-Peer "false";
+      Acquire::https::download.docker.com::Verify-Host "false";
+    dest: /etc/apt/apt.conf.d/99docker-insecure-tls
+    mode: "0644"
+  when: not docker_gpg_validate_certs
+
 - name: Install Docker Engine, CLI, and containerd
   ansible.builtin.apt:
     name:
