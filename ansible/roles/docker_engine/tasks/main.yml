@@ -34,7 +34,7 @@
       Acquire::https::download.docker.com::Verify-Host "false";
     dest: /etc/apt/apt.conf.d/99docker-insecure-tls
     mode: "0644"
-  when: not docker_gpg_validate_certs
+  when: not (docker_gpg_validate_certs | bool)
 
 - name: Install Docker Engine, CLI, and containerd
   ansible.builtin.apt:
