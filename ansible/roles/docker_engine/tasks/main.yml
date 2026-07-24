@@ -25,6 +25,7 @@
       https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
     filename: docker
     state: present
+    update_cache: false
 
 - name: Relax TLS verification for Docker's apt repo (corporate proxy workaround, see README)
   ansible.builtin.copy:
