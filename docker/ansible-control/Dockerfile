@@ -5,7 +5,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /usr/local/bin/
 COPY --from=dockercli /usr/local/bin/docker /usr/local/bin/docker
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends openssh-client ca-certificates && \
+    apt-get install -y --no-install-recommends openssh-client ca-certificates rsync && \
     rm -rf /var/lib/apt/lists/*
 
 ENV UV_SYSTEM_PYTHON=1
