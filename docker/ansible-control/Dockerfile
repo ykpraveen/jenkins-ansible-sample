@@ -17,13 +17,14 @@ RUN uv pip install --system --no-cache \
         "molecule-plugins[docker]==23.5.3" \
         "docker==7.1.0"
 
-# molecule's docker driver needs community.docker at runtime (for its connection
-# plugin), so it's baked in here rather than fetched by molecule's own dependency
-# step every test run. --ignore-certs is a deliberate, direct escape hatch for
-# building on a TLS-inspecting corporate network — see the README's corporate
-# network note. Installed to a HOME-independent path since the container's HOME
-# varies by invocation (root by default, /tmp when run with --user).
-RUN ansible-galaxy collection install community.docker --ignore-certs -p /usr/share/ansible/collections
+# molecule's docker driver needs community.docker (its connection plugin) and
+# ansible.posix (its create.yml uses the synchronize module) at runtime, so both are
+# baked in here rather than fetched by molecule's own dependency step every test run.
+# --ignore-certs is a deliberate, direct escape hatch for building on a TLS-inspecting
+# corporate network — see the README's corporate network note. Installed to a
+# HOME-independent path since the container's HOME varies by invocation (root by
+# default, /tmp when run with --user).
+RUN ansible-galaxy collection install community.docker ansible.posix --ignore-certs -p /usr/share/ansible/collections
 
 WORKDIR /ansible
 CMD ["bash"]
