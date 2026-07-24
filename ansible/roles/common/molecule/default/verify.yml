@@ -1,0 +1,14 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: /etc/timezone should be UTC
+      ansible.builtin.command: cat /etc/timezone
+      register: tz
+      changed_when: false
+      failed_when: tz.stdout != "UTC"
+
+    - name: /etc/motd should carry the Ansible-managed banner
+      ansible.builtin.command: grep -q "managed by Ansible" /etc/motd
+      changed_when: false

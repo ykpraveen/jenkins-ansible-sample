@@ -1,0 +1,8 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Install Python 3 (debian:bookworm-slim ships without it, but Ansible modules need it)
+      ansible.builtin.raw: apt-get update && apt-get install -y python3
+      changed_when: true

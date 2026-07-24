@@ -1,0 +1,4 @@
+environment_name: staging
+deploy_serial: "100%"
+health_check_retries: 5
+health_check_delay: 2

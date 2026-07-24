@@ -1,0 +1,34 @@
+---
+# Run with --limit to target one environment at a time, e.g.:
+#   ansible-playbook deploy.yml --limit dev     -e app_image_tag=1.2.3
+#   ansible-playbook deploy.yml --limit staging -e app_image_tag=1.2.3
+#   ansible-playbook deploy.yml --limit prod    -e app_image_tag=1.2.3
+# Plays whose hosts fall outside --limit are skipped automatically.
+
+- name: Deploy the sample app to dev
+  hosts: dev
+  become: true
+  # default() guards against --limit filtering this play's hosts down to zero:
+  # Ansible still templates `serial` for every play in the file before it can
+  # tell a play has no matching hosts to skip, and with none matched there's no
+  # host left to source deploy_serial's group_vars from.
+  serial: "{{ deploy_serial | default('100%') }}"
+  any_errors_fatal: true
+  roles:
+    - app_deploy
+
+- name: Deploy the sample app to staging
+  hosts: staging
+  become: true
+  serial: "{{ deploy_serial | default('100%') }}"
+  any_errors_fatal: true
+  roles:
+    - app_deploy
+
+- name: Deploy the sample app to prod (rolling, one host at a time)
+  hosts: prod
+  become: true
+  serial: "{{ deploy_serial | default('100%') }}"
+  any_errors_fatal: true
+  roles:
+    - app_deploy

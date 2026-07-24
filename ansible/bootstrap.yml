@@ -1,0 +1,7 @@
+---
+- name: Bootstrap all fleet hosts (common baseline + Docker engine)
+  hosts: all
+  become: true
+  roles:
+    - common
+    - docker_engine

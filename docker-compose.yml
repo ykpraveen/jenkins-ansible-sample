@@ -90,3 +90,17 @@ services:
       - traefik.enable=true
       - traefik.http.routers.app.rule=PathPrefix(`/`)
       - traefik.http.services.app.loadbalancer.server.port=8080
+
+  ansible-control:
+    build: docker/ansible-control
+    profiles: ["tools"]
+    networks:
+      - fleet_net
+    environment:
+      - ANSIBLE_VAULT_PASSWORD
+      - HOME=/tmp
+      - ANSIBLE_GALAXY_IGNORE_CERTS
+    volumes:
+      - ./ansible:/ansible
+      - ./secrets/ssh/id_ed25519:/secrets/id_ed25519:ro
+      - /var/run/docker.sock:/var/run/docker.sock

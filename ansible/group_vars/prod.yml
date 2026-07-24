@@ -1,0 +1,4 @@
+environment_name: prod
+deploy_serial: 1
+health_check_retries: 8
+health_check_delay: 3

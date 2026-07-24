@@ -1,0 +1,84 @@
+---
+# These fleet hosts are minimal containers with no systemd (sshd runs as PID 1),
+# so there's no service manager to hand dockerd to — it's supervised here with a
+# plain nohup'd background process instead, the way you'd manage any daemon on a
+# container that isn't running a real init system.
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add Docker's apt GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+    validate_certs: "{{ docker_gpg_validate_certs }}"
+
+- name: Add Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ docker_apt_arch_map[ansible_architecture] | default(ansible_architecture) }}
+      signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+    filename: docker
+    state: present
+    update_cache: false
+
+- name: Relax TLS verification for Docker's apt repo (corporate proxy workaround, see README)
+  ansible.builtin.copy:
+    content: |
+      Acquire::https::download.docker.com::Verify-Peer "false";
+      Acquire::https::download.docker.com::Verify-Host "false";
+    dest: /etc/apt/apt.conf.d/99docker-insecure-tls
+    mode: "0644"
+  when: not (docker_gpg_validate_certs | bool)
+
+- name: Install Docker Engine, CLI, and containerd
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+    update_cache: true
+
+- name: Configure the Docker daemon (insecure local registry — no TLS in this sandbox)
+  ansible.builtin.copy:
+    content: |
+      {
+        "insecure-registries": ["{{ registry }}"]
+      }
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+  register: docker_daemon_config
+
+- name: Check whether dockerd is already running
+  ansible.builtin.command: pgrep -x dockerd
+  register: dockerd_running
+  changed_when: false
+  failed_when: false
+
+- name: Stop dockerd so it picks up a changed daemon.json
+  ansible.builtin.command: pkill -x dockerd
+  when: docker_daemon_config.changed and dockerd_running.rc == 0
+  register: dockerd_stopped
+  changed_when: dockerd_stopped.rc == 0
+
+- name: Pause for dockerd to exit after being stopped
+  ansible.builtin.pause:
+    seconds: 2
+  when: dockerd_stopped is changed
+
+- name: Start dockerd if it isn't running
+  ansible.builtin.shell: nohup dockerd >/var/log/dockerd.log 2>&1 & disown
+  args:
+    executable: /bin/bash
+  when: dockerd_running.rc != 0 or docker_daemon_config.changed
+
+- name: Wait for the Docker socket to accept connections
+  ansible.builtin.wait_for:
+    path: /var/run/docker.sock
+    timeout: 30
