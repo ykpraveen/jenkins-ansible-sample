@@ -99,7 +99,7 @@ services:
     environment:
       - ANSIBLE_VAULT_PASSWORD
       - HOME=/tmp
-      - MOLECULE_GALAXY_IGNORE_CERTS
+      - ANSIBLE_GALAXY_IGNORE_CERTS
     volumes:
       - ./ansible:/ansible
       - ./secrets/ssh/id_ed25519:/secrets/id_ed25519:ro
