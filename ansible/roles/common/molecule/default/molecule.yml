@@ -1,9 +1,12 @@
 ---
-# On a corporate/TLS-inspecting network, the `dependency` step below (ansible-galaxy
-# fetching community.docker from galaxy.ansible.com) can fail the same way the
-# docker_engine role's apt/GPG fetches do — see the README's "Corporate network /
-# TLS-inspecting proxy note". Fix there is an env var ansible-galaxy itself reads
-# regardless of how it's invoked: ANSIBLE_GALAXY_IGNORE_CERTS=true.
+# community.docker (needed by the docker driver's connection plugin) is baked into
+# the ansible-control image at build time instead — see docker/ansible-control/Dockerfile
+# and the README's "Corporate network / TLS-inspecting proxy note". Molecule's own
+# dependency step would otherwise re-fetch it from galaxy.ansible.com on every test run
+# and hit the same TLS-interception failure.
+dependency:
+  name: galaxy
+  enabled: false
 
 driver:
   name: docker
