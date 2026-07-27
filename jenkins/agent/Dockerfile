@@ -10,18 +10,17 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 ENV UV_SYSTEM_PYTHON=1
+# Same rationale as docker/ansible-control/Dockerfile: bake collections in at build
+# time rather than let molecule/ansible-galaxy fetch them per-run, which fails on
+# the corporate TLS-inspecting proxy. See README's corporate network note.
 RUN uv pip install --system --no-cache \
         "ansible-core==2.17.6" \
         "ansible-lint==24.9.2" \
         "yamllint==1.35.1" \
         "molecule==24.9.0" \
         "molecule-plugins[docker]==23.5.3" \
-        "docker==7.1.0"
-
-# Same rationale as docker/ansible-control/Dockerfile: bake collections in at build
-# time rather than let molecule/ansible-galaxy fetch them per-run, which fails on
-# the corporate TLS-inspecting proxy. See README's corporate network note.
-RUN ansible-galaxy collection install community.docker ansible.posix --ignore-certs -p /usr/share/ansible/collections
+        "docker==7.1.0" && \
+    ansible-galaxy collection install community.docker ansible.posix --ignore-certs -p /usr/share/ansible/collections
 
 WORKDIR /home/jenkins/agent
 CMD ["sleep", "infinity"]

@@ -25,9 +25,14 @@ pipeline {
                         sh 'ansible-lint bootstrap.yml deploy.yml roles'
                     }
                 }
-                sh 'docker run --rm -i hadolint/hadolint < app/Dockerfile'
-                sh 'docker run --rm -i hadolint/hadolint < docker/ansible-control/Dockerfile'
-                sh 'docker run --rm -i hadolint/hadolint < jenkins/agent/Dockerfile'
+                // DL3008 (pin apt package versions) is ignored: these Dockerfiles
+                // apt-get update fresh on every build, so pinning exact Debian package
+                // versions here just goes stale and breaks builds later for no real
+                // reproducibility gain. No volume mount into this container, so a
+                // .hadolint.yaml wouldn't be readable anyway — has to be a CLI flag.
+                sh 'docker run --rm -i hadolint/hadolint hadolint --ignore DL3008 - < app/Dockerfile'
+                sh 'docker run --rm -i hadolint/hadolint hadolint --ignore DL3008 - < docker/ansible-control/Dockerfile'
+                sh 'docker run --rm -i hadolint/hadolint hadolint --ignore DL3008 - < jenkins/agent/Dockerfile'
             }
         }
 
