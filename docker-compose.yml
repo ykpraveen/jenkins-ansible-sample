@@ -126,6 +126,15 @@ services:
       - fleet_net
     ports:
       - "8080:8080"
+    # Unlike ansible-control (runs as root), this image's Dockerfile ends with
+    # USER jenkins — a non-root user with no default access to the bind-mounted
+    # docker.sock below, which is root:docker-owned on the host. Without this, the
+    # Docker Cloud in jenkins/casc/jenkins.yaml fails to provision agents silently
+    # (no error in the build console, it just queues forever). Set DOCKER_GID to
+    # your host's docker group gid if it isn't the common Debian/Ubuntu default:
+    #   DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) docker compose up -d jenkins-controller
+    group_add:
+      - "${DOCKER_GID:-999}"
     environment:
       - JENKINS_ADMIN_ID
       - JENKINS_ADMIN_PASSWORD
