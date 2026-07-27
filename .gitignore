@@ -6,6 +6,10 @@ secrets/*
 .vault_pass
 *.vault_pass
 
+# Corporate TLS-inspecting proxy CA — machine-specific, never commit
+jenkins/controller/corporate-ca/*
+!jenkins/controller/corporate-ca/.gitkeep
+
 # Ansible
 *.retry
 ansible/**/vault.yml.dec
