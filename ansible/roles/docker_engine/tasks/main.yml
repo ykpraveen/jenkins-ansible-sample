@@ -15,12 +15,12 @@
     url: https://download.docker.com/linux/debian/gpg
     dest: /etc/apt/keyrings/docker.asc
     mode: "0644"
-    validate_certs: "{{ docker_gpg_validate_certs }}"
+    validate_certs: "{{ docker_engine_gpg_validate_certs }}"
 
 - name: Add Docker apt repository
   ansible.builtin.apt_repository:
     repo: >-
-      deb [arch={{ docker_apt_arch_map[ansible_architecture] | default(ansible_architecture) }}
+      deb [arch={{ docker_engine_apt_arch_map[ansible_architecture] | default(ansible_architecture) }}
       signed-by=/etc/apt/keyrings/docker.asc]
       https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
     filename: docker
@@ -34,7 +34,7 @@
       Acquire::https::download.docker.com::Verify-Host "false";
     dest: /etc/apt/apt.conf.d/99docker-insecure-tls
     mode: "0644"
-  when: not (docker_gpg_validate_certs | bool)
+  when: not (docker_engine_gpg_validate_certs | bool)
 
 - name: Install Docker Engine, CLI, and containerd
   ansible.builtin.apt:
@@ -66,17 +66,17 @@
   when: docker_daemon_config.changed and dockerd_running.rc == 0
   register: dockerd_stopped
   changed_when: dockerd_stopped.rc == 0
+  notify: Pause for dockerd to exit after being stopped
 
-- name: Pause for dockerd to exit after being stopped
-  ansible.builtin.pause:
-    seconds: 2
-  when: dockerd_stopped is changed
+- name: Flush handlers so dockerd has actually exited before we try to start it again
+  ansible.builtin.meta: flush_handlers
 
 - name: Start dockerd if it isn't running
   ansible.builtin.shell: nohup dockerd >/var/log/dockerd.log 2>&1 & disown
   args:
     executable: /bin/bash
   when: dockerd_running.rc != 0 or docker_daemon_config.changed
+  changed_when: true
 
 - name: Wait for the Docker socket to accept connections
   ansible.builtin.wait_for:

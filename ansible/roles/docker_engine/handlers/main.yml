@@ -1,0 +1,4 @@
+---
+- name: Pause for dockerd to exit after being stopped
+  ansible.builtin.pause:
+    seconds: 2
