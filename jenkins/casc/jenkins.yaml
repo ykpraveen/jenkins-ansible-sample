@@ -27,6 +27,10 @@ jenkins:
               mounts:
                 - "type=bind,source=/var/run/docker.sock,destination=/var/run/docker.sock"
             remoteFs: "/home/jenkins/agent"
+            # docker-plugin's default pull strategy re-pulls any image tagged "latest"
+            # from a registry, which 404s here — this image only ever exists locally,
+            # built by `docker compose build jenkins-agent-image`.
+            pullStrategy: "PULL_NEVER"
             # attach (docker exec over the Docker API) needs neither a JNLP secret nor
             # sshd in the agent image — sidesteps the static-agent bootstrapping problem.
             connector:
