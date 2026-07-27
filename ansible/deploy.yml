@@ -1,8 +1,8 @@
 ---
 # Run with --limit to target one environment at a time, e.g.:
-#   ansible-playbook deploy.yml --limit dev     -e app_image_tag=1.2.3
-#   ansible-playbook deploy.yml --limit staging -e app_image_tag=1.2.3
-#   ansible-playbook deploy.yml --limit prod    -e app_image_tag=1.2.3
+#   ansible-playbook deploy.yml --limit dev     -e app_deploy_app_image_tag=1.2.3
+#   ansible-playbook deploy.yml --limit staging -e app_deploy_app_image_tag=1.2.3
+#   ansible-playbook deploy.yml --limit prod    -e app_deploy_app_image_tag=1.2.3
 # Plays whose hosts fall outside --limit are skipped automatically.
 
 - name: Deploy the sample app to dev

@@ -87,7 +87,7 @@ jobs:
       - name: Deploy the CI-built image to dev via Ansible
         run: >
           docker compose run --rm ansible-control
-          ansible-playbook deploy.yml --limit dev -e app_image_tag=ci
+          ansible-playbook deploy.yml --limit dev -e app_deploy_app_image_tag=ci
         env:
           ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
 
