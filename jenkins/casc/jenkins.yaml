@@ -1,0 +1,73 @@
+jenkins:
+  systemMessage: "jenkins-ansible-sample — configured via JCasC, do not click around by hand"
+  # 0 forces every build step onto a Docker Cloud agent instead of the controller itself.
+  numExecutors: 0
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  clouds:
+    - docker:
+        name: "docker"
+        dockerApi:
+          dockerHost:
+            uri: "unix:///var/run/docker.sock"
+        templates:
+          - labelString: "ansible-agent"
+            dockerTemplateBase:
+              image: "jenkins-ansible-sample-agent:latest"
+              network: "fleet_net"
+              volumes:
+                - "/var/run/docker.sock:/var/run/docker.sock"
+            remoteFs: "/home/jenkins/agent"
+            # attach (docker exec over the Docker API) needs neither a JNLP secret nor
+            # sshd in the agent image — sidesteps the static-agent bootstrapping problem.
+            connector:
+              attach:
+                user: "root"
+            instanceCapStr: "2"
+            removeVolumes: true
+            retentionStrategy:
+              idleMinutes: 10
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          # JCasC resolves ${name} against env vars first, then falls back to reading
+          # a file named <name> under /run/secrets/ — the ssh key is mounted there
+          # rather than passed as an env var since it's multi-line key material.
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "fleet-ssh-key"
+              username: "ansible"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${fleet_ssh_private_key}"
+          - string:
+              scope: GLOBAL
+              id: "ansible-vault-password"
+              secret: "${ANSIBLE_VAULT_PASSWORD}"
+
+jobs:
+  - script: |
+      pipelineJob('jenkins-ansible-sample-deploy') {
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/ykpraveen/jenkins-ansible-sample.git')
+                }
+                branch('*/feature/dry-run')
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }

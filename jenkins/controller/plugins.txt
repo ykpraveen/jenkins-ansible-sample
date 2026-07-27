@@ -1,0 +1,7 @@
+configuration-as-code:1815.v39cd7fdd0b_9d
+job-dsl:1.91
+docker-plugin:1.7
+git:5.5.0
+workflow-aggregator:600.vb_57cdd26fdd7
+credentials-binding:657.v2b_19875ac54d
+timestamper:1.28
