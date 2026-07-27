@@ -22,8 +22,10 @@ jenkins:
             dockerTemplateBase:
               image: "jenkins-ansible-sample-agent:latest"
               network: "fleet_net"
-              volumes:
-                - "/var/run/docker.sock:/var/run/docker.sock"
+              # docker-plugin deprecated the old "-v host:container" volumes list in
+              # favor of --mount syntax.
+              mounts:
+                - "type=bind,source=/var/run/docker.sock,destination=/var/run/docker.sock"
             remoteFs: "/home/jenkins/agent"
             # attach (docker exec over the Docker API) needs neither a JNLP secret nor
             # sshd in the agent image — sidesteps the static-agent bootstrapping problem.
