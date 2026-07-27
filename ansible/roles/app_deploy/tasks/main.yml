@@ -20,7 +20,7 @@
   when: previous_image.stdout | length > 0
 
 - name: Pull the target application image
-  ansible.builtin.command: "docker pull {{ registry }}/{{ app_name }}:{{ app_image_tag }}"
+  ansible.builtin.command: "docker pull {{ registry }}/{{ app_name }}:{{ app_deploy_app_image_tag }}"
   changed_when: true
 
 - name: Remove any existing app container
@@ -35,9 +35,9 @@
     --name {{ app_name }}
     --network host
     --restart unless-stopped
-    -e SIMULATE_FAILURE={{ simulate_failure }}
+    -e SIMULATE_FAILURE={{ app_deploy_simulate_failure }}
     -e APP_SECRET_KEY={{ app_secret_key }}
-    {{ registry }}/{{ app_name }}:{{ app_image_tag }}
+    {{ registry }}/{{ app_name }}:{{ app_deploy_app_image_tag }}
   changed_when: true
 
 - name: Wait for the new container to pass its post-deploy health check
