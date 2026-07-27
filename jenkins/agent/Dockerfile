@@ -6,7 +6,7 @@ COPY --from=dockercli /usr/local/bin/docker /usr/local/bin/docker
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        openssh-client ca-certificates rsync git openjdk-17-jre-headless && \
+        openssh-client ca-certificates rsync git openjdk-21-jre-headless && \
     rm -rf /var/lib/apt/lists/*
 
 ENV UV_SYSTEM_PYTHON=1
