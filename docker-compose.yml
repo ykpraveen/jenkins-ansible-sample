@@ -118,7 +118,10 @@ services:
     profiles: ["tools"]
 
   jenkins-controller:
-    build: jenkins/controller
+    build:
+      context: jenkins/controller
+      args:
+        JENKINS_TRUST_OBSERVED_TLS_CERT: ${JENKINS_TRUST_OBSERVED_TLS_CERT:-false}
     networks:
       - fleet_net
     ports:
