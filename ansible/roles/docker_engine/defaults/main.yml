@@ -1,2 +1,2 @@
 ---
-docker_gpg_validate_certs: true
+docker_engine_gpg_validate_certs: true
