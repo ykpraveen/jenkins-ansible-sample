@@ -1,6 +1,9 @@
 networks:
   fleet_net:
     driver: bridge
+    # Fixed name so it doesn't depend on the compose project/directory name — the
+    # Docker Cloud agent template in jenkins/casc/jenkins.yaml references it directly.
+    name: fleet_net
 
 volumes:
   registry_data:
@@ -8,6 +11,7 @@ volumes:
   staging_docker_data:
   prod1_docker_data:
   prod2_docker_data:
+  jenkins_home:
 
 services:
   registry:
@@ -103,4 +107,42 @@ services:
     volumes:
       - ./ansible:/ansible
       - ./secrets/ssh/id_ed25519:/secrets/id_ed25519:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # Build-only: tags the image the Docker Cloud agent template in
+  # jenkins/casc/jenkins.yaml launches agents from. `docker compose build
+  # jenkins-agent-image` (re)builds it; it never runs via `up`.
+  jenkins-agent-image:
+    build: jenkins/agent
+    image: jenkins-ansible-sample-agent:latest
+    profiles: ["tools"]
+
+  jenkins-controller:
+    build:
+      context: jenkins/controller
+      args:
+        JENKINS_TRUST_OBSERVED_TLS_CERT: ${JENKINS_TRUST_OBSERVED_TLS_CERT:-false}
+    networks:
+      - fleet_net
+    ports:
+      - "8080:8080"
+    # Unlike ansible-control (runs as root), this image's Dockerfile ends with
+    # USER jenkins — a non-root user with no default access to the bind-mounted
+    # docker.sock below, which is root:docker-owned on the host. Without this, the
+    # Docker Cloud in jenkins/casc/jenkins.yaml fails to provision agents silently
+    # (no error in the build console, it just queues forever). Set DOCKER_GID to
+    # your host's docker group gid if it isn't the common Debian/Ubuntu default:
+    #   DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) docker compose up -d jenkins-controller
+    group_add:
+      - "${DOCKER_GID:-999}"
+    environment:
+      - JENKINS_ADMIN_ID
+      - JENKINS_ADMIN_PASSWORD
+      - ANSIBLE_VAULT_PASSWORD
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ./jenkins/casc:/var/jenkins_home/casc_configs:ro
+      - ./secrets/ssh/id_ed25519:/run/secrets/fleet_ssh_private_key:ro
+      # DooD, same tradeoff as ansible-control: lets the controller launch Docker
+      # Cloud agents as sibling containers on the outer host's fleet_net.
       - /var/run/docker.sock:/var/run/docker.sock
