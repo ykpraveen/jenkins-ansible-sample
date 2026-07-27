@@ -1,0 +1,8 @@
+extends: default
+
+rules:
+  # The stock 80-char default doesn't match this repo's actual style (nested
+  # Ansible task args, GitHub Actions steps) — 130 covers the current worst
+  # offender (verify.yml at 128) with a little headroom.
+  line-length:
+    max: 130

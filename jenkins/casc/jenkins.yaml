@@ -70,7 +70,7 @@ jobs:
                 remote {
                   url('https://github.com/ykpraveen/jenkins-ansible-sample.git')
                 }
-                branch('*/feature/dry-run')
+                branch('*/main')
               }
             }
             scriptPath('Jenkinsfile')
