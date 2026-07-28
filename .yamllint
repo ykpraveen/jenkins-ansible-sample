@@ -1,4 +1,13 @@
+---
 extends: default
+
+# vault.yml is ansible-vault-encrypted ciphertext, not hand-editable YAML — it
+# can't be given a "---" document start without corrupting the vault format, so
+# it's excluded here rather than hand-patched. `**/` makes the pattern match
+# whether yamllint is invoked from the repo root (Jenkinsfile) or from /ansible
+# (ansible-control's WORKDIR, via docker compose).
+ignore: |
+  **/group_vars/all/vault.yml
 
 rules:
   # The stock 80-char default doesn't match this repo's actual style (nested
@@ -6,3 +15,14 @@ rules:
   # offender (verify.yml at 128) with a little headroom.
   line-length:
     max: 130
+  # ansible-lint's own `yaml` rule ships a bundled yamllint config and warns
+  # (disabling --fix) if a repo's custom .yamllint diverges from it — these five
+  # values are copied verbatim from ansible-lint's requirements, not chosen here.
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true

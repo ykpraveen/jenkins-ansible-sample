@@ -101,13 +101,10 @@
         rollback_message: >-
           {% if rollback_image | length == 0 -%}
           No last-known-good image was on record, so no rollback was possible —
-          {{ inventory_hostname }} is left on the failed deploy.
-          {%- elif rollback_health_result.status | default(0) == 200 -%}
-          Rolled back to {{ rollback_image }}, which is now healthy.
-          {%- else -%}
+          {{ inventory_hostname }} is left on the failed deploy.{%- elif rollback_health_result.status | default(0) == 200 -%}
+          Rolled back to {{ rollback_image }}, which is now healthy.{%- else -%}
           Rollback to {{ rollback_image }} was attempted but it ALSO failed its
-          health check — {{ inventory_hostname }} may be down.
-          {%- endif %}
+          health check — {{ inventory_hostname }} may be down.{%- endif %}
 
 - name: Fail the play if the post-deploy health check never passed
   ansible.builtin.fail:
