@@ -16,3 +16,11 @@ app_name: sample-app
 app_port: 8080
 
 app_secret_key: "{{ vault_app_secret_key }}"
+
+# Sandbox-only login for the local Grafana dashboard (Phase 7) — not a real secret,
+# same "insecure by design, called out explicitly" treatment as the local registry
+# and Traefik's dashboard. Must match docker-compose.yml's GRAFANA_ADMIN_PASSWORD if
+# you change it, since app_deploy uses these to post deploy-event annotations.
+grafana_url: http://grafana:3000
+grafana_admin_user: admin
+grafana_admin_password: admin

@@ -1,3 +1,8 @@
 ---
 app_deploy_app_image_tag: latest
 app_deploy_simulate_failure: false
+# Off switch for the Grafana annotation call (Phase 7) — e.g. CI, or any run where
+# the observability profile isn't up. The call already no-ops safely on its own
+# (failed_when: false, so an unreachable Grafana never breaks a deploy); this just
+# skips even attempting it.
+app_deploy_grafana_annotate: true

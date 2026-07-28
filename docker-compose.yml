@@ -12,6 +12,8 @@ volumes:
   prod1_docker_data:
   prod2_docker_data:
   jenkins_home:
+  prometheus_data:
+  grafana_data:
 
 services:
   registry:
@@ -155,3 +157,83 @@ services:
       # DooD, same tradeoff as ansible-control: lets the controller launch Docker
       # Cloud agents as sibling containers on the outer host's fleet_net.
       - /var/run/docker.sock:/var/run/docker.sock
+
+  # Opt-in (--profile observability): container-level metrics for this compose
+  # stack's own containers, via the outer Docker daemon. Can't see anything
+  # running inside each fleet host's *nested* dockerd — that's a separate daemon.
+  # `privileged: true` mirrors the fleet hosts' own tradeoff (real cgroup/container
+  # introspection needs it); `/dev/kmsg` is deliberately not mounted since it may
+  # not exist under WSL2 — cadvisor still starts fine without it, just logs a
+  # warning and skips the one collector that needs it.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    profiles: ["observability"]
+    privileged: true
+    networks:
+      - fleet_net
+    volumes:
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /:/rootfs:ro
+
+  # Opt-in (--profile observability): host-level CPU/memory/filesystem metrics.
+  # Deliberately bridge-networked rather than `network_mode: host` — that would
+  # need its own WSL2-specific networking workaround (see the WSL2 note above),
+  # not worth it here since CPU/memory/filesystem stats come straight from the
+  # bind-mounted /proc, /sys, and / regardless of network mode. The one thing
+  # this loses is real host NIC stats: network-interface metrics reflect this
+  # container's own veth instead.
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    profiles: ["observability"]
+    pid: host
+    networks:
+      - fleet_net
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+
+  # Opt-in (--profile observability): docker/prometheus/prometheus.yml scrapes
+  # cadvisor and node-exporter above.
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["observability"]
+    networks:
+      - fleet_net
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  # Opt-in (--profile observability): provisioned (not click-ops) with the
+  # Prometheus datasource and the fleet-overview dashboard — see
+  # docker/grafana/provisioning/. Deploy events land here as annotations, posted
+  # by app_deploy's own Ansible tasks (see roles/app_deploy/tasks/main.yml) via
+  # Grafana's HTTP API using these same admin credentials — admin/admin by
+  # default since this is a local sandbox dashboard, not a real secret; override
+  # both GRAFANA_ADMIN_PASSWORD here and ansible/group_vars/all/vars.yml's
+  # grafana_admin_password together if you change it.
+  grafana:
+    image: grafana/grafana:11.3.1
+    profiles: ["observability"]
+    networks:
+      - fleet_net
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
