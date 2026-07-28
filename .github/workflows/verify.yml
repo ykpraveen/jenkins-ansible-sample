@@ -78,6 +78,8 @@ jobs:
         run: |
           docker compose run --rm ansible-control yamllint .
           docker compose run --rm ansible-control ansible-lint bootstrap.yml deploy.yml
+        env:
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
 
       - name: Bootstrap fleet hosts (common + docker_engine roles)
         run: docker compose run --rm ansible-control ansible-playbook bootstrap.yml
