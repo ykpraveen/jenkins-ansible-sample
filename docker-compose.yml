@@ -130,6 +130,7 @@ services:
       context: jenkins/controller
       args:
         JENKINS_TRUST_OBSERVED_TLS_CERT: ${JENKINS_TRUST_OBSERVED_TLS_CERT:-false}
+    profiles: ["tools"]
     networks:
       - fleet_net
     ports:
