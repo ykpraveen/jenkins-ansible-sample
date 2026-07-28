@@ -23,6 +23,12 @@ pipeline {
         IMAGE_NAME = "sample-app"
         IMAGE_TAG  = "${env.GIT_COMMIT.take(7)}"
         IMAGE      = "${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+        // The agent's `docker` CLI is just the binary copied out of docker:27-cli
+        // (see jenkins/agent/Dockerfile), with no buildx plugin alongside it, so
+        // `docker build` falls back to the legacy builder and prints a deprecation
+        // warning. The daemon itself supports BuildKit fine — this just opts the
+        // classic `docker build` command into using it, without needing buildx.
+        DOCKER_BUILDKIT = "1"
     }
 
     stages {
@@ -86,7 +92,12 @@ pipeline {
                         // deploy.yml's app_deploy role health-checks the target host itself
                         // and fails the play on a bad response, so a red stage here already
                         // means dev is unhealthy — no separate smoke-test step needed.
-                        sh "ansible-playbook deploy.yml --limit dev -e app_deploy_app_image_tag=${IMAGE_TAG} -e fleet_ssh_private_key_file=${FLEET_SSH_KEY}"
+                        //
+                        // $FLEET_SSH_KEY is deliberately left for the *shell* to expand
+                        // (single-quoted), not Groovy — interpolating a credential straight
+                        // into the script text via a GString bypasses Jenkins' credential
+                        // masking. See https://jenkins.io/redirect/groovy-string-interpolation.
+                        sh "ansible-playbook deploy.yml --limit dev -e app_deploy_app_image_tag=${IMAGE_TAG} -e fleet_ssh_private_key_file=" + '$FLEET_SSH_KEY'
                     }
                 }
             }
@@ -99,7 +110,9 @@ pipeline {
                     string(credentialsId: 'ansible-vault-password', variable: 'ANSIBLE_VAULT_PASSWORD')
                 ]) {
                     dir('ansible') {
-                        sh "ansible-playbook deploy.yml --limit staging -e app_deploy_app_image_tag=${IMAGE_TAG} -e fleet_ssh_private_key_file=${FLEET_SSH_KEY}"
+                        // See the Deploy dev stage's comment on why $FLEET_SSH_KEY is
+                        // single-quoted here rather than Groovy-interpolated.
+                        sh "ansible-playbook deploy.yml --limit staging -e app_deploy_app_image_tag=${IMAGE_TAG} -e fleet_ssh_private_key_file=" + '$FLEET_SSH_KEY'
                     }
                 }
             }
@@ -123,7 +136,9 @@ pipeline {
                     dir('ansible') {
                         // prod's group_vars sets deploy_serial: 1, so app_deploy rolls
                         // through prod1 then prod2 one at a time, failing fast on prod1.
-                        sh "ansible-playbook deploy.yml --limit prod -e app_deploy_app_image_tag=${IMAGE_TAG} -e fleet_ssh_private_key_file=${FLEET_SSH_KEY}"
+                        // See the Deploy dev stage's comment on why $FLEET_SSH_KEY is
+                        // single-quoted here rather than Groovy-interpolated.
+                        sh "ansible-playbook deploy.yml --limit prod -e app_deploy_app_image_tag=${IMAGE_TAG} -e fleet_ssh_private_key_file=" + '$FLEET_SSH_KEY'
                     }
                 }
                 sh 'curl -sf http://traefik/health'
