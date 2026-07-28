@@ -50,10 +50,70 @@
   delay: "{{ health_check_delay }}"
   failed_when: false
 
+- name: Roll back to the last-known-good image if the health check failed
+  when: health_result.status | default(0) != 200
+  block:
+    - name: Check whether a last-known-good image was recorded
+      ansible.builtin.stat:
+        path: /opt/app_deploy_last_known_good
+      register: lkg_stat
+
+    - name: Read the last-known-good image reference
+      ansible.builtin.slurp:
+        src: /opt/app_deploy_last_known_good
+      register: lkg_file
+      when: lkg_stat.stat.exists
+
+    - name: Determine the rollback target, if any
+      ansible.builtin.set_fact:
+        rollback_image: "{{ (lkg_file.content | b64decode | trim) if lkg_stat.stat.exists else '' }}"
+
+    - name: Stop and remove the failed container so the rollback can take its name
+      ansible.builtin.command: "docker rm -f {{ app_name }}"
+      when: rollback_image | length > 0
+      changed_when: true
+
+    - name: Start the last-known-good image in its place
+      ansible.builtin.command: >
+        docker run -d
+        --name {{ app_name }}
+        --network host
+        --restart unless-stopped
+        -e SIMULATE_FAILURE=false
+        -e APP_SECRET_KEY={{ app_secret_key }}
+        {{ rollback_image }}
+      when: rollback_image | length > 0
+      changed_when: true
+
+    - name: Wait for the rolled-back container to pass its health check
+      ansible.builtin.uri:
+        url: "http://localhost:{{ app_port }}/health"
+        status_code: 200
+      register: rollback_health_result
+      until: rollback_health_result.status | default(0) == 200
+      retries: "{{ health_check_retries }}"
+      delay: "{{ health_check_delay }}"
+      failed_when: false
+      when: rollback_image | length > 0
+
+    - name: Summarize the rollback outcome
+      ansible.builtin.set_fact:
+        rollback_message: >-
+          {% if rollback_image | length == 0 -%}
+          No last-known-good image was on record, so no rollback was possible —
+          {{ inventory_hostname }} is left on the failed deploy.
+          {%- elif rollback_health_result.status | default(0) == 200 -%}
+          Rolled back to {{ rollback_image }}, which is now healthy.
+          {%- else -%}
+          Rollback to {{ rollback_image }} was attempted but it ALSO failed its
+          health check — {{ inventory_hostname }} may be down.
+          {%- endif %}
+
 - name: Fail the play if the post-deploy health check never passed
   ansible.builtin.fail:
     msg: >-
       {{ app_name }} on {{ inventory_hostname }} failed its post-deploy health check
       after {{ health_check_retries }} attempts at {{ health_check_delay }}s intervals.
+      {{ rollback_message }}
       Deployment stopped before touching the rest of the batch.
   when: health_result.status | default(0) != 200

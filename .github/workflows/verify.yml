@@ -96,6 +96,21 @@ jobs:
           docker compose exec -T fleet-dev curl -sf http://localhost:8080/health
           docker compose exec -T fleet-dev curl -sf http://localhost:8080/version | grep -q '"git_sha"'
 
+      - name: Inject a broken deploy and confirm Ansible rolls it back automatically
+        run: |
+          # Same tag as the last deploy, but forces SIMULATE_FAILURE=true — the
+          # health check must fail, so this run itself is expected to fail.
+          ! docker compose run --rm ansible-control \
+            ansible-playbook deploy.yml --limit dev \
+            -e app_deploy_app_image_tag=ci -e app_deploy_simulate_failure=true
+        env:
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+
+      - name: Dev is healthy again after the rollback
+        run: |
+          docker compose exec -T fleet-dev curl -sf http://localhost:8080/health
+          docker compose exec -T fleet-dev curl -sf http://localhost:8080/version | grep -q '"git_sha"'
+
       - name: Show logs on failure
         if: failure()
         run: docker compose logs
@@ -105,4 +120,3 @@ jobs:
         run: docker compose down -v
 
       # Phase 4: validate Jenkins JCasC config parses
-      # Phase 6: deploy a broken image tag, assert rollback restores the previous version
