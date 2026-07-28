@@ -24,7 +24,10 @@ services:
       - registry_data:/var/lib/registry
 
   traefik:
-    image: traefik:v3.1
+    # Docker Engine 29 dropped API 1.24 support entirely, and every traefik release
+    # before 3.6.1 hardcodes 1.24 for its docker provider (DOCKER_API_VERSION is
+    # ignored) — traefik/traefik#12253, fixed by #12256. Needs 3.6.1+.
+    image: traefik:v3.6.1
     command: ["--configFile=/etc/traefik/traefik.yml"]
     networks:
       - fleet_net
