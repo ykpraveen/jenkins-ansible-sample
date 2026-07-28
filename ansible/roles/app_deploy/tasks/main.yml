@@ -106,6 +106,36 @@
           Rollback to {{ rollback_image }} was attempted but it ALSO failed its
           health check — {{ inventory_hostname }} may be down.{%- endif %}
 
+- name: Determine the deploy event summary for observability
+  ansible.builtin.set_fact:
+    deploy_event_text: >-
+      {{ app_name }} {{ app_deploy_app_image_tag }} on {{ inventory_hostname }}:
+      {{ 'deployed successfully.' if (health_result.status | default(0) == 200)
+         else (rollback_message | default('deploy failed, no rollback message recorded.')) }}
+    deploy_event_tag: "{{ 'success' if (health_result.status | default(0) == 200) else 'rollback' }}"
+
+- name: Record this deploy as a Grafana annotation
+  ansible.builtin.uri:
+    url: "{{ grafana_url }}/api/annotations"
+    method: POST
+    force_basic_auth: true
+    user: "{{ grafana_admin_user }}"
+    password: "{{ grafana_admin_password }}"
+    body_format: json
+    body:
+      text: "{{ deploy_event_text }}"
+      tags:
+        - deploy
+        - "{{ environment_name }}"
+        - "{{ deploy_event_tag }}"
+    status_code: 200
+    timeout: 5
+  when: app_deploy_grafana_annotate | default(true)
+  # Grafana is opt-in (--profile observability) — an unreachable annotations API
+  # (connection refused, DNS failure, etc.) must never fail a deploy over it.
+  failed_when: false
+  changed_when: false
+
 - name: Fail the play if the post-deploy health check never passed
   ansible.builtin.fail:
     msg: >-

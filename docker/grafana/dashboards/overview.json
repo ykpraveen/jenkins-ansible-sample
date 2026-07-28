@@ -1,0 +1,105 @@
+{
+  "title": "Jenkins-Ansible-Sample: Fleet Overview",
+  "uid": "fleet-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["fleet", "observability"],
+  "annotations": {
+    "list": [
+      {
+        "name": "Deploys",
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "iconColor": "rgba(255, 96, 96, 1)",
+        "tags": ["deploy"],
+        "type": "tags"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Fleet container CPU usage",
+      "description": "Per-container CPU, from cadvisor. Only covers this compose stack's own containers (fleet-*, registry, traefik) — not what runs inside each fleet host's nested dockerd.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\".*fleet.*\"}[1m]))",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Fleet container memory usage",
+      "description": "Per-container RSS memory, from cadvisor.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "container_memory_usage_bytes{name=~\".*fleet.*\"}",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Host CPU usage",
+      "description": "From node-exporter. Bridge-networked (not network_mode: host), so this still reflects the real host's /proc CPU stats.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Host memory available",
+      "description": "From node-exporter.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "node_memory_MemAvailable_bytes",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

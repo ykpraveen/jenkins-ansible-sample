@@ -1,0 +1,25 @@
+---
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Container-level metrics for this compose stack's own containers (fleet-*,
+  # registry, traefik, etc.) — cadvisor talks to the *outer* Docker daemon via its
+  # bind-mounted docker.sock, so it can't see anything running inside each fleet
+  # host's nested dockerd (that's a separate daemon it never touches).
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # Host-level metrics (CPU, memory, filesystem) for the machine Docker itself
+  # runs on. Bridge-networked rather than `network_mode: host` (see the README's
+  # observability note), so network-interface metrics reflect this container's own
+  # veth, not the real host NIC — CPU/memory/filesystem are unaffected by that.
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
