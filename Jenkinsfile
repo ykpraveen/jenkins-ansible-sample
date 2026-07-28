@@ -48,6 +48,20 @@ pipeline {
             }
         }
 
+        stage('Molecule (common role)') {
+            steps {
+                // molecule launches its own "common-test" container via the agent's
+                // bind-mounted docker.sock (DooD, same as the deploy stages' Ansible
+                // calls) — a sibling of the agent, not nested inside it, so
+                // --destroy=always guarantees cleanup on the host even if an earlier
+                // step in the test sequence fails, rather than leaking a container
+                // that would otherwise outlive this ephemeral agent.
+                dir('ansible/roles/common') {
+                    sh 'molecule test --destroy=always'
+                }
+            }
+        }
+
         stage('Build & Test') {
             steps {
                 // app/Dockerfile's "test" stage runs pytest; "final" depends on it via
