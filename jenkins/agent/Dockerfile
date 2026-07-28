@@ -1,8 +1,19 @@
 FROM docker:27-cli AS dockercli
+# docker:27-cli doesn't actually vendor the buildx plugin at a predictable path (a
+# first attempt at `COPY --from=dockercli /usr/libexec/docker/cli-plugins/docker-buildx`
+# failed: not found) — docker/buildx-bin is the image Docker Inc. publishes
+# specifically for grabbing just the plugin binary in a multi-stage COPY like this.
+# Not version-pinned to match this repo's usual style (ansible-core==, etc.) since
+# this environment can't verify which buildx-bin tags actually exist to pin one.
+FROM docker/buildx-bin:latest AS buildx
 
 FROM python:3.12-slim AS final
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /uvx /usr/local/bin/
 COPY --from=dockercli /usr/local/bin/docker /usr/local/bin/docker
+# The Jenkinsfile sets DOCKER_BUILDKIT=1 (avoids the legacy builder's deprecation
+# warning) — that only works if the buildx plugin is actually present, since the CLI
+# no longer falls back to the legacy builder once BuildKit mode is forced.
+COPY --from=buildx /buildx /usr/libexec/docker/cli-plugins/docker-buildx
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
