@@ -109,6 +109,11 @@ services:
       - ANSIBLE_GALAXY_IGNORE_CERTS
     volumes:
       - ./ansible:/ansible
+      # yamllint's config auto-discovery only checks the current directory (WORKDIR
+      # /ansible), so the repo-root .yamllint has to be mounted in explicitly —
+      # without it, `yamllint .` silently falls back to its 80-char default instead
+      # of this repo's 130.
+      - ./.yamllint:/ansible/.yamllint:ro
       - ./secrets/ssh/id_ed25519:/secrets/id_ed25519:ro
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -125,6 +130,7 @@ services:
       context: jenkins/controller
       args:
         JENKINS_TRUST_OBSERVED_TLS_CERT: ${JENKINS_TRUST_OBSERVED_TLS_CERT:-false}
+    profiles: ["tools"]
     networks:
       - fleet_net
     ports:

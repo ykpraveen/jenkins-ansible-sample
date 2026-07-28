@@ -6,6 +6,18 @@ pipeline {
         disableConcurrentBuilds()
     }
 
+    parameters {
+        // Manual by default: staging's own post-deploy health check (app_deploy's
+        // fail-with-rollback task, Phase 6) already gates a bad build from ever
+        // reaching this point, so "automatic" here just means skipping the human
+        // approval click, not skipping verification.
+        booleanParam(
+            name: 'AUTO_PROMOTE',
+            defaultValue: false,
+            description: 'Skip the manual "Promote to prod?" gate and deploy to prod automatically once staging is healthy.'
+        )
+    }
+
     environment {
         REGISTRY   = "registry:5000"
         IMAGE_NAME = "sample-app"
@@ -80,6 +92,9 @@ pipeline {
         }
 
         stage('Promote to prod?') {
+            when {
+                expression { !params.AUTO_PROMOTE }
+            }
             steps {
                 input message: "Promote ${IMAGE_TAG} to prod?"
             }
